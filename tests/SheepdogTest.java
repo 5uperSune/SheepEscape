@@ -1,9 +1,16 @@
+import core.*;
+import entity.*;
+import app.*;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
- * Tests for Sheepdog — jager player, distraheres af treat.
+ * Tests for Sheepdog — foelger rute, giver skade.
  */
 public class SheepdogTest {
 
@@ -13,68 +20,68 @@ public class SheepdogTest {
 
     @BeforeEach
     void setUp() {
-        dungeon = new Dungeon(20, 20, 1);
-        // Fyld med gulv
-        for (int x = 0; x < 20; x++) {
-            for (int y = 0; y < 20; y++) {
-                dungeon.addEntity(new Floor(new Position(x, y)));
-            }
-        }
-        player = new Player(new Position(5, 5));
+        dungeon = new Dungeon(10, 10, 1);
+        player = new Player(new Position(1, 1));
         dungeon.addEntity(player);
-        dog = new Sheepdog(new Position(8, 5));
+        dog = new Sheepdog(new Position(5, 5));
         dungeon.addEntity(dog);
     }
 
     @Test
-    void testChasesPlayerInRange() {
-        Position startPos = dog.getPosition();
-        dog.onTurn(dungeon);
-        // Hunden skal have bevaaget sig mod spilleren
-        Position newPos = dog.getPosition();
-        assertTrue(newPos.distanceTo(player.getPosition())
-            < startPos.distanceTo(player.getPosition()));
+    void testStartPosition() {
+        assertEquals(new Position(5, 5), dog.getPosition());
     }
 
     @Test
-    void testDoesNotChaseOutOfRange() {
-        // Flyt spilleren langt vaek (mere end 5 felter)
-        player.moveTo(new Position(15, 15));
-        Position startPos = new Position(dog.getPosition().getX(), dog.getPosition().getY());
+    void testFollowsRoute() {
+        List<Position> route = Arrays.asList(
+            new Position(5, 5),
+            new Position(6, 5),
+            new Position(7, 5),
+            new Position(6, 5)
+        );
+        dog.setRoute(route);
+
         dog.onTurn(dungeon);
-        // Hunden skal ikke have bevaaget sig
-        assertEquals(startPos, dog.getPosition());
+        assertEquals(new Position(6, 5), dog.getPosition());
+
+        dog.onTurn(dungeon);
+        assertEquals(new Position(7, 5), dog.getPosition());
+
+        dog.onTurn(dungeon);
+        assertEquals(new Position(6, 5), dog.getPosition());
+    }
+
+    @Test
+    void testRouteWrapsAround() {
+        List<Position> route = Arrays.asList(
+            new Position(5, 5),
+            new Position(6, 5)
+        );
+        dog.setRoute(route);
+
+        dog.onTurn(dungeon);
+        assertEquals(new Position(6, 5), dog.getPosition());
+
+        dog.onTurn(dungeon);
+        assertEquals(new Position(5, 5), dog.getPosition());
+
+        dog.onTurn(dungeon);
+        assertEquals(new Position(6, 5), dog.getPosition());
     }
 
     @Test
     void testDamagesPlayerOnContact() {
-        // Placer hunden lige ved siden af spilleren
-        dog.setPosition(new Position(6, 5));
+        // Placer hund rute saa den rammer spilleren
+        List<Position> route = Arrays.asList(
+            new Position(5, 5),
+            new Position(1, 1)  // Spillerens position
+        );
+        dog.setRoute(route);
+
         dog.onTurn(dungeon);
-        // Hunden burde rammer spilleren
+        // Hunden er nu paa (1,1) = spillerens position
         assertEquals(85, player.getHealth());
-    }
-
-    @Test
-    void testDistractedByTreat() {
-        // Placer en kastet treat langt fra spilleren
-        TreatItem treat = new TreatItem(new Position(15, 5));
-        // Simuler at treat er kastet
-        treat.setPosition(new Position(15, 5));
-        // Vi maa bruge reflection eller direkte saette thrown-feltet
-        // I stedet: tilfoej treat til dungeon og lad den vaere "thrown"
-        // via dungeon-interaktion
-        player.addItem(treat);
-        Entity used = player.useItem(0);
-        if (used instanceof TreatItem) {
-            ((TreatItem) used).use(player, dungeon, Direction.EAST);
-        }
-
-        Position dogStart = new Position(dog.getPosition().getX(), dog.getPosition().getY());
-        dog.onTurn(dungeon);
-        // Hunden skal bevaege sig mod treat, ikke mod spilleren
-        Position dogNew = dog.getPosition();
-        assertNotEquals(dogStart, dogNew);
     }
 
     @Test

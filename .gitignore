@@ -1,0 +1,25 @@
+# Compiled class files
+bin/
+out/
+*.class
+
+# Private study notes (not part of submission)
+doc/Laeseguide.pdf
+doc/Eksamensforberedelse.pdf
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.log

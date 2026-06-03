@@ -1,3 +1,7 @@
+import core.*;
+import entity.*;
+import app.*;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -74,16 +78,16 @@ public class DungeonLoaderTest {
     }
 
     @Test
-    void testLevel2HasFarmer() throws IOException {
+    void testLevel2HasSheepdog() throws IOException {
         Dungeon dungeon = DungeonLoader.load("levels/level2.txt", 2);
-        boolean hasFarmer = false;
+        boolean hasDog = false;
         for (Entity e : dungeon.getEntities()) {
-            if (e instanceof Farmer) {
-                hasFarmer = true;
+            if (e instanceof Sheepdog) {
+                hasDog = true;
                 break;
             }
         }
-        assertTrue(hasFarmer);
+        assertTrue(hasDog);
     }
 
     @Test

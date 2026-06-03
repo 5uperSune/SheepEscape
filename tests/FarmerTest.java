@@ -1,12 +1,13 @@
+import core.*;
+import entity.*;
+import app.*;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
- * Tests for Farmer — foelger rute, giver skade.
+ * Tests for Farmer — jager player, distraheres af treat.
  */
 public class FarmerTest {
 
@@ -16,68 +17,64 @@ public class FarmerTest {
 
     @BeforeEach
     void setUp() {
-        dungeon = new Dungeon(10, 10, 1);
-        player = new Player(new Position(1, 1));
+        dungeon = new Dungeon(20, 20, 1);
+        // Fyld med gulv
+        for (int x = 0; x < 20; x++) {
+            for (int y = 0; y < 20; y++) {
+                dungeon.addEntity(new Floor(new Position(x, y)));
+            }
+        }
+        player = new Player(new Position(5, 5));
         dungeon.addEntity(player);
-        farmer = new Farmer(new Position(5, 5));
+        farmer = new Farmer(new Position(8, 5));
         dungeon.addEntity(farmer);
     }
 
     @Test
-    void testStartPosition() {
-        assertEquals(new Position(5, 5), farmer.getPosition());
+    void testChasesPlayerInRange() {
+        Position startPos = farmer.getPosition();
+        farmer.onTurn(dungeon);
+        // Farmeren skal have bevaaget sig mod spilleren
+        Position newPos = farmer.getPosition();
+        assertTrue(newPos.distanceTo(player.getPosition())
+            < startPos.distanceTo(player.getPosition()));
     }
 
     @Test
-    void testFollowsRoute() {
-        List<Position> route = Arrays.asList(
-            new Position(5, 5),
-            new Position(6, 5),
-            new Position(7, 5),
-            new Position(6, 5)
-        );
-        farmer.setRoute(route);
-
+    void testDoesNotChaseOutOfRange() {
+        // Flyt spilleren langt vaek (mere end 5 felter)
+        player.moveTo(new Position(15, 15));
+        Position startPos = new Position(farmer.getPosition().getX(), farmer.getPosition().getY());
         farmer.onTurn(dungeon);
-        assertEquals(new Position(6, 5), farmer.getPosition());
-
-        farmer.onTurn(dungeon);
-        assertEquals(new Position(7, 5), farmer.getPosition());
-
-        farmer.onTurn(dungeon);
-        assertEquals(new Position(6, 5), farmer.getPosition());
-    }
-
-    @Test
-    void testRouteWrapsAround() {
-        List<Position> route = Arrays.asList(
-            new Position(5, 5),
-            new Position(6, 5)
-        );
-        farmer.setRoute(route);
-
-        farmer.onTurn(dungeon);
-        assertEquals(new Position(6, 5), farmer.getPosition());
-
-        farmer.onTurn(dungeon);
-        assertEquals(new Position(5, 5), farmer.getPosition());
-
-        farmer.onTurn(dungeon);
-        assertEquals(new Position(6, 5), farmer.getPosition());
+        // Farmeren skal ikke have bevaaget sig
+        assertEquals(startPos, farmer.getPosition());
     }
 
     @Test
     void testDamagesPlayerOnContact() {
-        // Placer farmer rute saa den rammer spilleren
-        List<Position> route = Arrays.asList(
-            new Position(5, 5),
-            new Position(1, 1)  // Spillerens position
-        );
-        farmer.setRoute(route);
-
+        // Placer farmeren lige ved siden af spilleren
+        farmer.setPosition(new Position(6, 5));
         farmer.onTurn(dungeon);
-        // Farmer er nu paa (1,1) = spillerens position
+        // Farmeren burde ramme spilleren med 30 skade
         assertEquals(70, player.getHealth());
+    }
+
+    @Test
+    void testDistractedByTreat() {
+        // Placer en kastet treat langt fra spilleren
+        TreatItem treat = new TreatItem(new Position(15, 5));
+        treat.setPosition(new Position(15, 5));
+        player.addItem(treat);
+        Entity used = player.useItem(0);
+        if (used instanceof TreatItem) {
+            ((TreatItem) used).use(player, dungeon, Direction.EAST);
+        }
+
+        Position farmerStart = new Position(farmer.getPosition().getX(), farmer.getPosition().getY());
+        farmer.onTurn(dungeon);
+        // Farmeren skal bevaege sig mod treat, ikke mod spilleren
+        Position farmerNew = farmer.getPosition();
+        assertNotEquals(farmerStart, farmerNew);
     }
 
     @Test

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sheep Escape 🐑</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  height: 100vh;
+  padding: 8px;
+}
+
+#top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: #16213e;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+#level-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #e0a030;
+}
+
+#hp-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#hp-bar-bg {
+  width: 120px;
+  height: 14px;
+  background: #333;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+#hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e74c3c, #2ecc71);
+  border-radius: 7px;
+  transition: width 0.3s;
+}
+
+#hp-text {
+  font-size: 12px;
+  color: #aaa;
+  min-width: 60px;
+}
+
+#board-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+#board {
+  display: grid;
+  gap: 0;
+  line-height: 1;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+#messages {
+  width: 100%;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #f0c040;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+#messages div { margin: 1px 0; }
+
+#inventory-bar {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  padding: 4px 0;
+  min-height: 40px;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+.inv-slot {
+  width: 38px;
+  height: 38px;
+  background: #16213e;
+  border: 2px solid #333;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  position: relative;
+}
+.inv-slot:active { background: #2a3a5e; }
+.inv-slot .slot-num {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 8px;
+  color: #666;
+}
+
+#controls {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+#dpad {
+  display: grid;
+  grid-template-columns: 56px 56px 56px;
+  grid-template-rows: 56px 56px 56px;
+  gap: 4px;
+}
+
+.dpad-btn {
+  width: 56px;
+  height: 56px;
+  background: #16213e;
+  border: 2px solid #2a3a5e;
+  border-radius: 12px;
+  color: #e0e0e0;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dpad-btn:active { background: #2a3a5e; border-color: #e0a030; }
+.dpad-empty { visibility: hidden; }
+
+/* Modal overlays */
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+#overlay.active { display: flex; }
+#overlay h1 { font-size: 28px; margin-bottom: 12px; }
+#overlay p { font-size: 16px; margin-bottom: 8px; color: #ccc; }
+#overlay button {
+  margin-top: 16px;
+  padding: 12px 32px;
+  font-size: 18px;
+  background: #2ecc71;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+}
+#overlay button:hover { background: #27ae60; }
+#overlay button.retry { background: #e74c3c; }
+#overlay button.retry:hover { background: #c0392b; }
+
+#throw-prompt {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 90;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#throw-prompt.active { display: flex; }
+#throw-prompt p { font-size: 18px; color: #f0c040; margin-bottom: 16px; }
+#throw-dpad {
+  display: grid;
+  grid-template-columns: 60px 60px 60px;
+  grid-template-rows: 60px 60px 60px;
+  gap: 4px;
+}
+
+/* Symbol legend */
+#legend {
+  width: 100%;
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  padding: 2px 0;
+  flex-shrink: 0;
+}
+
+@media (min-height: 700px) {
+  .cell { font-size: 24px; }
+  .dpad-btn { width: 64px; height: 64px; font-size: 28px; }
+  #dpad { grid-template-columns: 64px 64px 64px; grid-template-rows: 64px 64px 64px; }
+}
+
+@media (min-height: 900px) {
+  .cell { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="top-bar">
+    <span id="level-label">Level 1</span>
+    <div id="hp-bar-container">
+      <div id="hp-bar-bg"><div id="hp-bar-fill" style="width:100%"></div></div>
+      <span id="hp-text">100/100 HP</span>
+    </div>
+  </div>
+
+  <div id="board-wrapper">
+    <div id="board"></div>
+  </div>
+
+  <div id="messages"></div>
+
+  <div id="inventory-bar"></div>
+
+  <div id="legend">🐑 dig · 🧱 mur · 🚧 hegn · 🔥 el-hegn · 💧 vand · 🏁 udgang · ⭐ frihed · 👨 farmer · 🐕 hund · 💛 hø · 💣 bombe · 🍖 godbid · 🚨 alarm</div>
+
+  <div id="controls">
+    <div id="dpad">
+      <div class="dpad-empty"></div>
+      <div class="dpad-btn" data-dir="north">▲</div>
+      <div class="dpad-empty"></div>
+      <div class="dpad-btn" data-dir="west">◀</div>
+      <div class="dpad-btn" data-dir="wait">·</div>
+      <div class="dpad-btn" data-dir="east">▶</div>
+      <div class="dpad-empty"></div>
+      <div class="dpad-btn" data-dir="south">▼</div>
+      <div class="dpad-empty"></div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <h1 id="overlay-title"></h1>
+  <p id="overlay-text"></p>
+  <button id="overlay-btn" onclick="overlayAction()">Start</button>
+</div>
+
+<div id="throw-prompt">
+  <p>Kast godbid i hvilken retning?</p>
+  <div id="throw-dpad">
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" onclick="throwTreat('north')">▲</div>
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" onclick="throwTreat('west')">◀</div>
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" onclick="throwTreat('east')">▶</div>
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" onclick="throwTreat('south')">▼</div>
+    <div class="dpad-empty"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  SHEEP ESCAPE — Web Version
+//  Ported from Java console game to HTML5 + JavaScript
+// ============================================================
+
+// --- Directions ---
+const DIR = {
+  north: { dx: 0, dy: -1 },
+  south: { dx: 0, dy: 1 },
+  east:  { dx: 1, dy: 0 },
+  west:  { dx: -1, dy: 0 }
+};
+
+// --- Level data (embedded from .txt files) ---
+const LEVELS = [
+  {
+    map: [
+      "####################",
+      "#..................#",
+      "#..@...........h...#",
+      "#..................#",
+      "#....||||||........#",
+      "#..................#",
+      "#..............>...#",
+      "####################"
+    ],
+    routes: []
+  },
+  {
+    map: [
+      "####################",
+      "#..................#",
+      "#..@.....x.....h...#",
+      "#..................#",
+      "#....||||..........#",
+      "#..........F.......#",
+      "#...x..............#",
+      "#..............>...#",
+      "#..................#",
+      "####################"
+    ],
+    routes: ["ROUTE 0 11,5 12,5 13,5 14,5 15,5 14,5 13,5 12,5 11,5 10,5"]
+  },
+  {
+    map: [
+      "########################",
+      "#......................#",
+      "#..@.......!...........#",
+      "#......................#",
+      "#....||||..............#",
+      "#..~~..........F.......#",
+      "#......................#",
+      "#......D...............#",
+      "#......................#",
+      "#.h.......t...|||......#",
+      "#......................#",
+      "#..................>...#",
+      "########################"
+    ],
+    routes: ["ROUTE 0 15,5 16,5 17,5 18,5 19,5 18,5 17,5 16,5 15,5 14,5"]
+  },
+  {
+    map: [
+      "############################",
+      "#..........................#",
+      "#..@.....x.......!.........#",
+      "#..........................#",
+      "#......|||.....||||........#",
+      "#..~~.............F........#",
+      "#..........................#",
+      "#..........D...............#",
+      "#...h..................D...#",
+      "#..........................#",
+      "#.....t.......x............#",
+      "#..........................#",
+      "#......b.......w...........#",
+      "#..........................#",
+      "#........................*.#",
+      "############################"
+    ],
+    routes: ["ROUTE 0 18,5 19,5 20,5 21,5 22,5 21,5 20,5 19,5 18,5 17,5"]
+  }
+];
+
+// --- Entity types ---
+const ENTITY = {
+  floor:    { sprite: '', solid: false, bg: '#2d5a1e' },
+  wall:     { sprite: '🧱', solid: true, bg: '#555' },
+  fence:    { sprite: '🚧', solid: true, bg: '#2d5a1e' },
+  efence:   { sprite: '🔥', solid: false, bg: '#2d5a1e' },
+  water:    { sprite: '💧', solid: false, bg: '#1a4a8a' },
+  hay:      { sprite: '💛', solid: false, bg: '#2d5a1e' },
+  bomb:     { sprite: '💣', solid: false, bg: '#2d5a1e' },
+  treat:    { sprite: '🍖', solid: false, bg: '#2d5a1e' },
+  snare:    { sprite: '', solid: false, bg: '#2d5a1e', hidden: true },
+  alarm:    { sprite: '🚨', solid: false, bg: '#2d5a1e' },
+  farmer:   { sprite: '👨', solid: true, bg: '#2d5a1e' },
+  sheepdog: { sprite: '🐕', solid: true, bg: '#2d5a1e' },
+  gate:     { sprite: '🏁', solid: false, bg: '#2d5a1e' },
+  freedom:  { sprite: '⭐', solid: false, bg: '#3a7a2e' },
+  player:   { sprite: '🐑', solid: false, bg: '#2d5a1e' }
+};
+
+// --- Game state ---
+let dungeon = null;
+let currentLevel = 0;
+let playing = false;
+let messages = [];
+let pendingTreatIndex = -1;
+
+// --- Entity class ---
+class Entity {
+  constructor(type, x, y) {
+    this.type = type;
+    this.x = x;
+    this.y = y;
+    this.sprite = ENTITY[type].sprite;
+    this.solid = ENTITY[type].solid;
+    this.bg = ENTITY[type].bg;
+    this.visible = true;
+    this.removed = false;
+  }
+}
+
+class Player extends Entity {
+  constructor(x, y) {
+    super('player', x, y);
+    this.hp = 100;
+    this.maxHp = 100;
+    this.inventory = [];
+    this.startX = x;
+    this.startY = y;
+  }
+  heal(n) { this.hp = Math.min(this.hp + n, this.maxHp); }
+  damage(n) { this.hp = Math.max(this.hp - n, 0); }
+  isDead() { return this.hp <= 0; }
+}
+
+class Farmer extends Entity {
+  constructor(x, y) {
+    super('farmer', x, y);
+    this.route = [{ x, y }];
+    this.routeIdx = 0;
+  }
+  setRoute(r) { this.route = r; this.routeIdx = 0; }
+  onTurn(dg) {
+    if (this.route.length <= 1) return;
+    this.routeIdx = (this.routeIdx + 1) % this.route.length;
+    const next = this.route[this.routeIdx];
+    this.x = next.x;
+    this.y = next.y;
+    if (dg.player && this.x === dg.player.x && this.y === dg.player.y) {
+      dg.player.damage(30);
+      addMsg("Farmeren fangede dig! -30 HP");
+    }
+  }
+}
+
+class Sheepdog extends Entity {
+  constructor(x, y) {
+    super('sheepdog', x, y);
+  }
+  onTurn(dg) {
+    const p = dg.player;
+    if (!p) return;
+    // Check for thrown treat
+    const treat = dg.entities.find(e => e.type === 'treat' && e.thrown && !e.removed);
+    if (treat) {
+      this.moveTowards(treat.x, treat.y, dg);
+      if (this.x === treat.x && this.y === treat.y) {
+        treat.removed = true;
+        addMsg("Hunden spiste godbiden!");
+      }
+      return;
+    }
+    const dist = Math.abs(this.x - p.x) + Math.abs(this.y - p.y);
+    if (dist <= 5) {
+      if (dist <= 1) {
+        p.damage(15);
+        addMsg("Hunden bed dig! -15 HP");
+      } else {
+        this.moveTowards(p.x, p.y, dg);
+      }
+    }
+  }
+  moveTowards(tx, ty, dg) {
+    const dx = tx - this.x;
+    const dy = ty - this.y;
+    let nx, ny;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      nx = this.x + Math.sign(dx); ny = this.y;
+    } else {
+      nx = this.x; ny = this.y + Math.sign(dy);
+    }
+    if (!dg.isSolidAt(nx, ny)) {
+      this.x = nx; this.y = ny;
+    } else {
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        nx = this.x; ny = this.y + Math.sign(dy);
+      } else {
+        nx = this.x + Math.sign(dx); ny = this.y;
+      }
+      if (!dg.isSolidAt(nx, ny)) { this.x = nx; this.y = ny; }
+    }
+  }
+}
+
+class ElectricFence extends Entity {
+  constructor(x, y) {
+    super('efence', x, y);
+    this.interactions = 3;
+  }
+  onStep(p, dg) {
+    if (this.interactions > 0) {
+      p.damage(10);
+      this.interactions--;
+      addMsg("Elektrisk hegn! -10 HP (" + this.interactions + " tilbage)");
+      if (this.interactions <= 0) {
+        this.removed = true;
+        addMsg("Det elektriske hegn slukkede!");
+      }
+    }
+  }
+}
+
+class Snare extends Entity {
+  constructor(x, y) {
+    super('snare', x, y);
+    this.triggered = false;
+  }
+  onStep(p, dg) {
+    if (!this.triggered) {
+      this.triggered = true;
+      p.damage(25);
+      this.sprite = '💀';
+      this.visible = true;
+      addMsg("Du trådte i en snare! -25 HP");
+    }
+  }
+}
+
+class AlarmSensor extends Entity {
+  constructor(x, y) {
+    super('alarm', x, y);
+    this.facing = 'south';
+    this.active = true;
+  }
+  onTurn(dg) {
+    if (!this.active || !dg.player) return;
+    const d = DIR[this.facing];
+    let cx = this.x + d.dx, cy = this.y + d.dy;
+    while (cx >= 0 && cx < dg.cols && cy >= 0 && cy < dg.rows) {
+      if (dg.isSolidAt(cx, cy)) break;
+      if (cx === dg.player.x && cy === dg.player.y) {
+        dg.player.damage(20);
+        this.active = false;
+        this.sprite = '';
+        addMsg("ALARM! Sensoren udsender et stød! -20 HP");
+        break;
+      }
+      cx += d.dx;
+      cy += d.dy;
+    }
+  }
+}
+
+class BombItem extends Entity {
+  constructor(x, y) {
+    super('bomb', x, y);
+    this.placed = false;
+    this.timer = 3;
+  }
+  onStep(p, dg) {
+    if (!this.placed) {
+      p.inventory.push({ type: 'bomb', name: 'Bombe', sprite: '💣', entity: this });
+      this.removed = true;
+      addMsg("Du samlede en bombe op!");
+    }
+  }
+  use(p, dg) {
+    this.x = p.x;
+    this.y = p.y;
+    this.placed = true;
+    this.removed = false;
+    this.visible = true;
+    this.sprite = '💥';
+    this.timer = 3;
+    dg.entities.push(this);
+    addMsg("Bombe placeret! Eksploderer om 3 ture.");
+  }
+  onTurn(dg) {
+    if (this.placed) {
+      this.timer--;
+      if (this.timer <= 0) this.explode(dg);
+    }
+  }
+  explode(dg) {
+    addMsg("BOOM! Bomben eksploderede!");
+    for (const e of dg.entities) {
+      if (e.type === 'fence' && !e.removed) {
+        if (Math.abs(e.x - this.x) <= 1 && Math.abs(e.y - this.y) <= 1) {
+          e.removed = true;
+        }
+      }
+    }
+    this.removed = true;
+  }
+}
+
+class HayItem extends Entity {
+  constructor(x, y) {
+    super('hay', x, y);
+  }
+  onStep(p, dg) {
+    p.inventory.push({ type: 'hay', name: 'Hø (+20 HP)', sprite: '💛', entity: this });
+    this.removed = true;
+    addMsg("Du samlede hø op!");
+  }
+}
+
+class TreatItem extends Entity {
+  constructor(x, y) {
+    super('treat', x, y);
+    this.thrown = false;
+  }
+  onStep(p, dg) {
+    if (!this.thrown) {
+      p.inventory.push({ type: 'treat', name: 'Godbid', sprite: '🍖', entity: this });
+      this.removed = true;
+      addMsg("Du samlede en godbid op!");
+    }
+  }
+  use(p, dg, dir) {
+    const d = DIR[dir];
+    let tx = p.x + d.dx, ty = p.y + d.dy;
+    while (true) {
+      if (tx < 0 || tx >= dg.cols || ty < 0 || ty >= dg.rows) {
+        tx = p.x + d.dx; ty = p.y + d.dy;
+        break;
+      }
+      if (!dg.isSolidAt(tx, ty)) break;
+      tx += d.dx; ty += d.dy;
+    }
+    this.x = tx; this.y = ty;
+    this.thrown = true;
+    this.removed = false;
+    this.visible = true;
+    dg.entities.push(this);
+    addMsg("Du kastede en godbid mod " + dir + "!");
+  }
+}
+
+class GateEntity extends Entity {
+  constructor(x, y) { super('gate', x, y); }
+  onStep(p, dg) {
+    dg.levelComplete = true;
+    addMsg("Du fandt udgangen!");
+  }
+}
+
+class FreedomEntity extends Entity {
+  constructor(x, y) { super('freedom', x, y); }
+  onStep(p, dg) {
+    dg.gameWon = true;
+    addMsg("FRIHED! Du slap væk fra folden!");
+  }
+}
+
+class WaterTrough extends Entity {
+  constructor(x, y) { super('water', x, y); }
+  onStep(p, dg) {
+    p.heal(15);
+    addMsg("Du drak vand! +15 HP");
+  }
+}
+
+// --- Dungeon ---
+class Dungeon {
+  constructor(cols, rows, levelNum) {
+    this.cols = cols;
+    this.rows = rows;
+    this.levelNum = levelNum;
+    this.entities = [];
+    this.player = null;
+    this.levelComplete = false;
+    this.gameWon = false;
+  }
+
+  isSolidAt(x, y) {
+    return this.entities.some(e => e.x === x && e.y === y && e.solid && !e.removed);
+  }
+
+  getEntitiesAt(x, y) {
+    return this.entities.filter(e => e.x === x && e.y === y && !e.removed);
+  }
+
+  move(dir) {
+    const p = this.player;
+    if (!p || p.isDead()) return;
+    const d = DIR[dir];
+    const nx = p.x + d.dx, ny = p.y + d.dy;
+    if (nx < 0 || nx >= this.cols || ny < 0 || ny >= this.rows) return;
+    if (this.isSolidAt(nx, ny)) return;
+    p.x = nx; p.y = ny;
+    const atPos = this.getEntitiesAt(nx, ny);
+    for (const e of atPos) {
+      if (e !== p && e.onStep) e.onStep(p, this);
+    }
+  }
+
+  tick() {
+    const snapshot = [...this.entities];
+    for (const e of snapshot) {
+      if (e !== this.player && !e.removed && e.onTurn) {
+        e.onTurn(this);
+      }
+    }
+  }
+}
+
+// --- Load level ---
+function loadLevel(idx) {
+  const data = LEVELS[idx];
+  const rows = data.map.length;
+  let cols = 0;
+  for (const line of data.map) cols = Math.max(cols, line.length);
+
+  const dg = new Dungeon(cols, rows, idx + 1);
+  const farmers = [];
+
+  for (let y = 0; y < rows; y++) {
+    const line = data.map[y];
+    for (let x = 0; x < cols; x++) {
+      const ch = x < line.length ? line[x] : '.';
+      // Always add floor
+      dg.entities.push(new Entity('floor', x, y));
+
+      switch (ch) {
+        case '#': dg.entities.push(new Entity('wall', x, y)); break;
+        case '|': { const f = new Entity('fence', x, y); f.type = 'fence'; dg.entities.push(f); break; }
+        case '~': dg.entities.push(new ElectricFence(x, y)); break;
+        case 'w': dg.entities.push(new WaterTrough(x, y)); break;
+        case 'h': dg.entities.push(new HayItem(x, y)); break;
+        case 'b': dg.entities.push(new BombItem(x, y)); break;
+        case 't': dg.entities.push(new TreatItem(x, y)); break;
+        case 'x': dg.entities.push(new Snare(x, y)); break;
+        case '!': dg.entities.push(new AlarmSensor(x, y)); break;
+        case 'F': { const f = new Farmer(x, y); dg.entities.push(f); farmers.push(f); break; }
+        case 'D': dg.entities.push(new Sheepdog(x, y)); break;
+        case '>': dg.entities.push(new GateEntity(x, y)); break;
+        case '*': dg.entities.push(new FreedomEntity(x, y)); break;
+        case '@': { const p = new Player(x, y); dg.entities.push(p); dg.player = p; break; }
+      }
+    }
+  }
+
+  // Parse routes
+  for (const rl of data.routes) {
+    const parts = rl.split(/\s+/);
+    if (parts.length < 3) continue;
+    const fi = parseInt(parts[1]);
+    if (fi < 0 || fi >= farmers.length) continue;
+    const route = [];
+    for (let i = 2; i < parts.length; i++) {
+      const [sx, sy] = parts[i].split(',');
+      route.push({ x: parseInt(sx), y: parseInt(sy) });
+    }
+    if (route.length > 0) farmers[fi].setRoute(route);
+  }
+
+  dungeon = dg;
+  messages = [];
+  addMsg("Level " + (idx + 1) + " - Start!");
+  render();
+}
+
+// --- Messages ---
+function addMsg(txt) {
+  messages.push(txt);
+  while (messages.length > 3) messages.shift();
+}
+
+// --- Render ---
+function render() {
+  if (!dungeon) return;
+  const board = document.getElementById('board');
+  const dg = dungeon;
+
+  // Calculate cell size based on available space
+  const wrapper = document.getElementById('board-wrapper');
+  const availW = wrapper.clientWidth - 8;
+  const availH = wrapper.clientHeight - 8;
+  const cellW = Math.floor(availW / dg.cols);
+  const cellH = Math.floor(availH / dg.rows);
+  const cellSize = Math.max(12, Math.min(cellW, cellH, 40));
+
+  board.style.gridTemplateColumns = `repeat(${dg.cols}, ${cellSize}px)`;
+  board.style.gridTemplateRows = `repeat(${dg.rows}, ${cellSize}px)`;
+
+  // Build grid data
+  const grid = [];
+  for (let y = 0; y < dg.rows; y++) {
+    for (let x = 0; x < dg.cols; x++) {
+      grid.push({ sprite: '', bg: '#2d5a1e' });
+    }
+  }
+
+  // Render entities (floor first, then others, player last)
+  const sorted = [...dg.entities].filter(e => !e.removed);
+  // Floor at bottom, player at top
+  sorted.sort((a, b) => {
+    if (a.type === 'player') return 1;
+    if (b.type === 'player') return -1;
+    if (a.type === 'floor') return -1;
+    if (b.type === 'floor') return 1;
+    return 0;
+  });
+
+  for (const e of sorted) {
+    if (!e.visible && !e.sprite) continue;
+    const idx = e.y * dg.cols + e.x;
+    if (idx >= 0 && idx < grid.length) {
+      if (e.bg) grid[idx].bg = e.bg;
+      if (e.sprite) grid[idx].sprite = e.sprite;
+    }
+  }
+
+  // Build HTML
+  let html = '';
+  for (let i = 0; i < grid.length; i++) {
+    const g = grid[i];
+    html += `<div class="cell" style="background:${g.bg};width:${cellSize}px;height:${cellSize}px;font-size:${Math.floor(cellSize * 0.7)}px">${g.sprite}</div>`;
+  }
+  board.innerHTML = html;
+
+  // HP bar
+  const p = dg.player;
+  if (p) {
+    const pct = (p.hp / p.maxHp * 100);
+    document.getElementById('hp-bar-fill').style.width = pct + '%';
+    document.getElementById('hp-text').textContent = p.hp + '/' + p.maxHp + ' HP';
+
+    // Color gradient based on HP
+    const fill = document.getElementById('hp-bar-fill');
+    if (pct > 60) fill.style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+    else if (pct > 30) fill.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+    else fill.style.background = 'linear-gradient(90deg, #c0392b, #e74c3c)';
+  }
+
+  // Level label
+  document.getElementById('level-label').textContent = 'Level ' + dg.levelNum;
+
+  // Messages
+  const msgEl = document.getElementById('messages');
+  msgEl.innerHTML = messages.map(m => `<div>>> ${m}</div>`).join('');
+
+  // Inventory
+  const invBar = document.getElementById('inventory-bar');
+  let invHtml = '';
+  if (p) {
+    for (let i = 0; i < p.inventory.length; i++) {
+      const item = p.inventory[i];
+      invHtml += `<div class="inv-slot" onclick="useItem(${i})"><span class="slot-num">${i + 1}</span>${item.sprite}</div>`;
+    }
+  }
+  if (!invHtml) invHtml = '<div style="color:#555;font-size:12px">Inventory: tom</div>';
+  invBar.innerHTML = invHtml;
+}
+
+// --- Game actions ---
+function doMove(dir) {
+  if (!playing || !dungeon) return;
+  if (dir === 'wait') {
+    dungeon.tick();
+  } else {
+    dungeon.move(dir);
+    dungeon.tick();
+  }
+  render();
+  checkState();
+}
+
+function useItem(idx) {
+  if (!playing || !dungeon || !dungeon.player) return;
+  const p = dungeon.player;
+  if (idx < 0 || idx >= p.inventory.length) return;
+
+  const item = p.inventory[idx];
+
+  if (item.type === 'hay') {
+    p.inventory.splice(idx, 1);
+    p.heal(20);
+    addMsg("Du spiste hø og fik 20 HP!");
+    dungeon.tick();
+    render();
+    checkState();
+  } else if (item.type === 'bomb') {
+    p.inventory.splice(idx, 1);
+    item.entity.use(p, dungeon);
+    dungeon.tick();
+    render();
+    checkState();
+  } else if (item.type === 'treat') {
+    // Need direction - show throw prompt
+    pendingTreatIndex = idx;
+    document.getElementById('throw-prompt').classList.add('active');
+  }
+}
+
+function throwTreat(dir) {
+  document.getElementById('throw-prompt').classList.remove('active');
+  if (pendingTreatIndex < 0 || !dungeon || !dungeon.player) return;
+  const p = dungeon.player;
+  if (pendingTreatIndex >= p.inventory.length) return;
+  const item = p.inventory[pendingTreatIndex];
+  p.inventory.splice(pendingTreatIndex, 1);
+  item.entity.use(p, dungeon, dir);
+  pendingTreatIndex = -1;
+  dungeon.tick();
+  render();
+  checkState();
+}
+
+function checkState() {
+  if (!dungeon) return;
+  if (dungeon.gameWon) {
+    playing = false;
+    showOverlay('⭐ TILLYKKE! ⭐', 'Fåret fandt friheden!', 'Spil igen', 'restart');
+  } else if (dungeon.levelComplete) {
+    if (currentLevel < LEVELS.length - 1) {
+      currentLevel++;
+      loadLevel(currentLevel);
+    } else {
+      playing = false;
+      showOverlay('🎉 TILLYKKE! 🎉', 'Du klarede alle levels!', 'Spil igen', 'restart');
+    }
+  } else if (dungeon.player && dungeon.player.isDead()) {
+    playing = false;
+    showOverlay('💀 GAME OVER 💀', 'Fåret blev fanget...', 'Prøv igen', 'retry');
+  }
+}
+
+// --- Overlay ---
+let overlayMode = 'start';
+
+function showOverlay(title, text, btnText, mode) {
+  overlayMode = mode;
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-text').textContent = text;
+  const btn = document.getElementById('overlay-btn');
+  btn.textContent = btnText;
+  btn.className = mode === 'retry' ? 'retry' : '';
+  document.getElementById('overlay').classList.add('active');
+}
+
+function overlayAction() {
+  document.getElementById('overlay').classList.remove('active');
+  if (overlayMode === 'start' || overlayMode === 'restart') {
+    currentLevel = 0;
+    playing = true;
+    loadLevel(currentLevel);
+  } else if (overlayMode === 'retry') {
+    playing = true;
+    loadLevel(currentLevel);
+  }
+}
+
+// --- Keyboard input ---
+document.addEventListener('keydown', (e) => {
+  if (!playing) return;
+
+  // Throw prompt active?
+  if (pendingTreatIndex >= 0) {
+    const keyDir = { ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
+                     w: 'north', s: 'south', a: 'west', d: 'east',
+                     W: 'north', S: 'south', A: 'west', D: 'east' };
+    if (keyDir[e.key]) {
+      e.preventDefault();
+      throwTreat(keyDir[e.key]);
+    }
+    return;
+  }
+
+  const keyMap = {
+    ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
+    w: 'north', s: 'south', a: 'west', d: 'east',
+    W: 'north', S: 'south', A: 'west', D: 'east'
+  };
+
+  if (keyMap[e.key]) {
+    e.preventDefault();
+    doMove(keyMap[e.key]);
+  } else if (e.key >= '1' && e.key <= '9') {
+    e.preventDefault();
+    useItem(parseInt(e.key) - 1);
+  }
+});
+
+// --- D-pad touch/click ---
+document.querySelectorAll('#dpad .dpad-btn').forEach(btn => {
+  const dir = btn.dataset.dir;
+  let handled = false;
+
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handled = true;
+    doMove(dir);
+  }, { passive: false });
+
+  btn.addEventListener('mousedown', (e) => {
+    if (!handled) {
+      e.preventDefault();
+      doMove(dir);
+    }
+    handled = false;
+  });
+});
+
+// --- Swipe gestures ---
+let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+
+document.getElementById('board-wrapper').addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }
+}, { passive: true });
+
+document.getElementById('board-wrapper').addEventListener('touchend', (e) => {
+  if (!playing) return;
+  const dt = Date.now() - touchStartTime;
+  if (dt > 500) return; // Too slow
+
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 20) return; // Too short
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    doMove(dx > 0 ? 'east' : 'west');
+  } else {
+    doMove(dy > 0 ? 'south' : 'north');
+  }
+}, { passive: true });
+
+// --- Resize handler ---
+window.addEventListener('resize', () => { if (dungeon) render(); });
+
+// --- Start ---
+showOverlay('🐑 SHEEP ESCAPE 🐑', 'Et får der flygter fra folden!', 'Start spillet', 'start');
+</script>
+</body>
+</html>
